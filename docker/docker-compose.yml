@@ -1,0 +1,141 @@
+version: '3.9'
+
+services:
+
+  # ── PostgreSQL Database ──────────────────────────────────────
+  database:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: flowpath-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       flowpath_db
+      POSTGRES_USER:     flowpath_user
+      POSTGRES_PASSWORD: devpassword123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flowpath_user -d flowpath_db"]
+      interval: 5s
+      timeout:  5s
+      retries:  15
+      start_period: 15s
+
+  # ── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: flowpath-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries:  10
+
+  # ── Auto-migrate: runs SQL files then exits ──────────────────
+  migrate:
+    image: postgis/postgis:15-3.3-alpine
+    container_name: flowpath-migrate
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: devpassword123
+    volumes:
+      - ../database/migrations:/migrations:ro
+      - ../database/seeds:/seeds:ro
+    command: >
+      sh -c "
+        echo 'Running migrations...' &&
+        for f in /migrations/*.sql; do
+          echo Running $$f &&
+          psql -h database -U flowpath_user -d flowpath_db -f $$f || true
+        done &&
+        echo 'Seeding signals...' &&
+        psql -h database -U flowpath_user -d flowpath_db -f /seeds/bangalore_signals.sql || true &&
+        echo 'Done!'
+      "
+    restart: "no"
+
+  # ── Node.js Backend API ──────────────────────────────────────
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: flowpath-backend
+    restart: on-failure:10
+    environment:
+      NODE_ENV:          development
+      PORT:              3000
+      DB_HOST:           database
+      DB_PORT:           5432
+      DB_NAME:           flowpath_db
+      DB_USER:           flowpath_user
+      DB_PASSWORD:       devpassword123
+      REDIS_URL:         redis://redis:6379
+      AI_ENGINE_URL:     http://ai-engine:8000
+      AI_ENGINE_API_KEY: dev-key
+      JWT_SECRET:        FlowPathDevSecret2024SuperLong123456
+      API_VERSION:       v1
+      LOG_LEVEL:         info
+      SOCKET_CORS_ORIGIN: "*"
+      RATE_LIMIT_MAX_REQUESTS: 500
+    ports:
+      - "3000:3000"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout:  10s
+      retries:  8
+      start_period: 30s
+
+  # ── Python AI Engine ─────────────────────────────────────────
+  ai-engine:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ai
+    container_name: flowpath-ai
+    restart: unless-stopped
+    environment:
+      ENV:               development
+      AI_ENGINE_API_KEY: dev-key
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/health || exit 1"]
+      interval: 15s
+      timeout:  10s
+      retries:  5
+      start_period: 20s
+
+  # ── Admin Dashboard ──────────────────────────────────────────
+  dashboard:
+    image: node:20-alpine
+    container_name: flowpath-dashboard
+    working_dir: /app
+    command: sh -c "npm install --silent && npm start"
+    environment:
+      REACT_APP_API_URL: http://localhost:3000/api/v1
+      REACT_APP_WS_URL:  ws://localhost:3000
+      PORT:              3001
+    volumes:
+      - ../dashboard:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

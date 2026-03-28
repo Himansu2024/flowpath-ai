@@ -1,0 +1,3 @@
+@echo off
+echo Showing backend logs (Ctrl+C to exit)...
+docker logs -f flowpath-backend

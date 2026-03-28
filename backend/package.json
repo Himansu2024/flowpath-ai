@@ -1,0 +1,40 @@
+{
+  "name": "flowpath-backend",
+  "version": "1.0.0",
+  "description": "FlowPath AI - Smart Traffic Optimization Backend API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "migrate": "node src/config/migrate.js",
+    "seed": "node src/config/seed.js"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1693.0",
+    "axios": "^1.4.0",
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.1.4",
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.7.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "morgan": "^1.10.0",
+    "node-cron": "^3.0.2",
+    "pg": "^8.11.0",
+    "redis": "^4.6.7",
+    "sequelize": "^6.32.1",
+    "sequelize-cli": "^6.6.1",
+    "socket.io": "^4.6.1",
+    "uuid": "^9.0.0",
+    "winston": "^3.9.0"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3"
+  }
+}
