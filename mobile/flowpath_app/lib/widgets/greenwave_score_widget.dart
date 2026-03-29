@@ -16,7 +16,7 @@ class GreenWaveScoreWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xF00E1520),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withAlpha((0.25 * 255).round())),
         boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12)],
       ),
       padding: const EdgeInsets.all(12),
@@ -28,7 +28,7 @@ class GreenWaveScoreWidget extends StatelessWidget {
           style: TextStyle(
             color: color, fontSize: 26, fontWeight: FontWeight.w900,
             fontFamily: 'Orbitron',
-            shadows: [Shadow(color: color.withOpacity(0.5), blurRadius: 12)],
+            shadows: [Shadow(color: color.withAlpha((0.5 * 255).round()), blurRadius: 12)],
           ),
         ),
         const Text('/100', style: TextStyle(color: Colors.grey, fontSize: 10)),

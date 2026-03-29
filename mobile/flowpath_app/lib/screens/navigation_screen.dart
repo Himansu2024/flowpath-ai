@@ -73,7 +73,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
             // Route polyline (glowing green)
             if (nav.routePoints.isNotEmpty) ...[
               PolylineLayer(polylines: [
-                Polyline(points: nav.routePoints, strokeWidth: 14, color: const Color(0xFF00E676).withOpacity(0.12)),
+                Polyline(points: nav.routePoints, strokeWidth: 14, color: const Color(0x1F00E676)),
                 Polyline(points: nav.routePoints, strokeWidth: 5.5, color: const Color(0xFF00E676), strokeCap: StrokeCap.round),
               ]),
             ],
@@ -107,7 +107,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 width: 72, height: 28,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2979FF).withOpacity(0.9),
+                    color: const Color(0xE62479FF),
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: const [BoxShadow(color: Color(0xFF2979FF), blurRadius: 8)],
                   ),
@@ -230,7 +230,7 @@ class _SignalMarkerWidget extends StatelessWidget {
           color: Colors.black,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: c, width: 1.5),
-          boxShadow: [BoxShadow(color: c.withOpacity(0.45), blurRadius:10)],
+          boxShadow: [BoxShadow(color: c.withAlpha((0.45 * 255).round()), blurRadius:10)],
         ),
         padding: const EdgeInsets.all(5),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -257,8 +257,8 @@ class _Bulb extends StatelessWidget {
     width:10, height:10, margin: const EdgeInsets.symmetric(vertical:1.5),
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: active ? color : color.withOpacity(0.12),
-      boxShadow: active ? [BoxShadow(color:color.withOpacity(0.7), blurRadius:7)] : null,
+      color: active ? color : color.withAlpha((0.12 * 255).round()),
+      boxShadow: active ? [BoxShadow(color:color.withAlpha((0.7 * 255).round()), blurRadius:7)] : null,
     ),
   );
 }
@@ -268,8 +268,8 @@ class _UserMarker extends StatelessWidget {
   final double heading;
   const _UserMarker({required this.heading});
   @override Widget build(BuildContext context) => Stack(alignment: Alignment.center, children: [
-    Container(width:34, height:34, decoration: BoxDecoration(
-      shape: BoxShape.circle, color: const Color(0xFF2979FF).withOpacity(0.18))),
+    Container(width:34, height:34, decoration: const BoxDecoration(
+      shape: BoxShape.circle, color: Color(0x2E2979FF))),
     Container(width:20, height:20, decoration: const BoxDecoration(
       shape: BoxShape.circle, color: Color(0xFF2979FF),
       boxShadow: [BoxShadow(color: Color(0xFF2979FF), blurRadius:14)])),
@@ -341,7 +341,7 @@ class _JunctionStrip extends StatelessWidget {
               width: 66,
               decoration: BoxDecoration(
                 color: const Color(0xFF0E1520), borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: c.withOpacity(0.4)),
+                border: Border.all(color: c.withAlpha((0.4 * 255).round())),
               ),
               padding: const EdgeInsets.all(6),
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children:[
@@ -370,8 +370,8 @@ class _MiniBulb extends StatelessWidget {
   @override Widget build(BuildContext context) => Container(
     width:8, height:8, decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: active ? color : color.withOpacity(0.15),
-      boxShadow: active ? [BoxShadow(color:color.withOpacity(0.6), blurRadius:4)] : null,
+      color: active ? color : color.withAlpha((0.15 * 255).round()),
+      boxShadow: active ? [BoxShadow(color:color.withAlpha((0.6 * 255).round()), blurRadius:4)] : null,
     ));
 }
 

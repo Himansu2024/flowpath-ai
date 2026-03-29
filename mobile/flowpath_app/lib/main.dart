@@ -64,8 +64,7 @@ class FlowPathApp extends StatelessWidget {
       colorScheme: ColorScheme.fromSeed(
         seedColor: const Color(0xFF00E676),
         brightness: Brightness.dark,
-        background: const Color(0xFF0D1117),
-        surface: const Color(0xFF0E1520),
+        surface: const Color(0xFF0D1117),
         primary: const Color(0xFF00E676),
         secondary: const Color(0xFF00B0FF),
         error: const Color(0xFFFF1744),
@@ -129,8 +128,11 @@ class _AppShellState extends State<_AppShell> {
   @override
   void initState() {
     super.initState();
-    // Attempt to restore session from saved JWT token
-    Future.microtask(() => context.read<AuthProvider>().tryAutoLogin());
+    // Attempt to restore session from saved JWT token after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<AuthProvider>().tryAutoLogin();
+    });
   }
 
   @override
@@ -201,13 +203,14 @@ class _LoginScreenState extends State<_LoginScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
+    final navigator = Navigator.of(context);
 
     final success = _isLogin
         ? await auth.login(_emailCtrl.text.trim(), _passCtrl.text)
         : await auth.register(_emailCtrl.text.trim(), _passCtrl.text, _nameCtrl.text.trim());
 
     if (success && mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+      navigator.pushReplacementNamed('/home');
     }
   }
 
@@ -288,9 +291,9 @@ class _LoginScreenState extends State<_LoginScreen> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF1744).withOpacity(0.1),
+                    color: const Color(0x1AFF1744),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.3)),
+                    border: Border.all(color: const Color(0x4DFF1744)),
                   ),
                   child: Text(auth.error!,
                     style: const TextStyle(color: Color(0xFFFF1744), fontSize: 13)),

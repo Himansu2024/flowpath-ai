@@ -11,7 +11,7 @@ class ApiService {
   // Base URL — change this to your deployed AWS CloudFront URL in production
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://10.0.2.2:3000/api/v1', // Android emulator → localhost
+    defaultValue: 'https://flowpath-backend.onrender.com/api/v1', // Android emulator → localhost
   );
 
   ApiService() {

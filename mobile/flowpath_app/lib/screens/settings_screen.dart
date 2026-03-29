@@ -35,7 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             border: Border.all(color: const Color(0xFF1E2A3A)),
           ),
           child: Row(children: [
-            CircleAvatar(backgroundColor: const Color(0xFF00E676).withOpacity(0.15),
+            CircleAvatar(backgroundColor: const Color(0x2600E676),
               child: Text(
                 (auth.userName ?? 'U')[0].toUpperCase(),
                 style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold),
@@ -52,7 +52,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 24),
 
-        _SectionLabel('Navigation'),
+        const _SectionLabel('Navigation'),
         _SettingToggle('Voice Navigation', 'Speak turn-by-turn instructions', '🔊', _voiceNav,
           (v) => setState(() => _voiceNav = v)),
         _SettingToggle('Eco Mode', 'Prioritise fuel-saving speed recommendations', '🌿', _ecoMode,
@@ -61,24 +61,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           (v) => setState(() => _notifications = v)),
         const SizedBox(height: 20),
 
-        _SectionLabel('Vehicle Type'),
+        const _SectionLabel('Vehicle Type'),
         Wrap(spacing: 10, children: ['car', 'bike', 'truck', 'bus'].map((t) =>
           ChoiceChip(
             label: Text('${_vehicleEmoji(t)} ${t[0].toUpperCase()}${t.substring(1)}'),
             selected: _vehicleType == t,
-            selectedColor: const Color(0xFF00E676).withOpacity(0.2),
+            selectedColor: const Color(0x3300E676),
             labelStyle: TextStyle(
               color: _vehicleType == t ? const Color(0xFF00E676) : Colors.grey),
             backgroundColor: const Color(0xFF0E1520),
             side: BorderSide(color: _vehicleType == t
-              ? const Color(0xFF00E676).withOpacity(0.4)
+              ? const Color(0x6600E676)
               : const Color(0xFF1E2A3A)),
             onSelected: (s) { if (s) setState(() => _vehicleType = t); },
           ),
         ).toList()),
         const SizedBox(height: 20),
 
-        _SectionLabel('Map Style'),
+        const _SectionLabel('Map Style'),
         Wrap(spacing: 10, children: [
           _MapStyleChip('Dark', 'dark', _mapStyle, (v) => setState(() => _mapStyle = v)),
           _MapStyleChip('Satellite', 'satellite', _mapStyle, (v) => setState(() => _mapStyle = v)),
@@ -87,10 +87,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 28),
 
         // About
-        _SectionLabel('About'),
-        _InfoRow('App Version', '1.0.0'),
-        _InfoRow('AI Engine', 'GreenWave v1.0'),
-        _InfoRow('Map Data', 'OpenStreetMap India'),
+        const _SectionLabel('About'),
+        const _InfoRow('App Version', '1.0.0'),
+        const _InfoRow('AI Engine', 'GreenWave v1.0'),
+        const _InfoRow('Map Data', 'OpenStreetMap India'),
         const SizedBox(height: 28),
 
         // Logout
@@ -153,7 +153,7 @@ class _SettingToggle extends StatelessWidget {
       subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 11)),
       value: value,
       onChanged: onChanged,
-      activeColor: const Color(0xFF00E676),
+      activeThumbColor: const Color(0xFF00E676),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16),
     ),
   );
@@ -168,10 +168,10 @@ class _MapStyleChip extends StatelessWidget {
   Widget build(BuildContext context) => ChoiceChip(
     label: Text(label),
     selected: current == value,
-    selectedColor: const Color(0xFF00E676).withOpacity(0.2),
+    selectedColor: const Color(0x3300E676),
     labelStyle: TextStyle(color: current == value ? const Color(0xFF00E676) : Colors.grey),
     backgroundColor: const Color(0xFF0E1520),
-    side: BorderSide(color: current == value ? const Color(0xFF00E676).withOpacity(0.4) : const Color(0xFF1E2A3A)),
+    side: BorderSide(color: current == value ? const Color(0x6600E676) : const Color(0xFF1E2A3A)),
     onSelected: (s) { if (s) onSelected(value); },
   );
 }

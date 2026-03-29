@@ -2,8 +2,6 @@
 // Complete navigation state management with GPS, rerouting, voice, and eco tracking
 
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,6 +11,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../models/signal_model.dart';
+import 'package:flutter/material.dart';
 
 class NavigationProvider extends ChangeNotifier {
   final ApiService   apiService;
@@ -126,12 +125,14 @@ class NavigationProvider extends ChangeNotifier {
       ),
     ).listen((pos) {
       userLocation     = LatLng(pos.latitude, pos.longitude);
-      heading          = pos.heading ?? 0;
-      currentSpeedKmh  = ((pos.speed ?? 0) * 3.6).clamp(0, 200);
+      heading          = pos.heading;
+      currentSpeedKmh  = ((pos.speed * 3.6).clamp(0, 200)).toDouble();
 
       // Follow user while navigating
-      if (isNavigating && _mapController != null) {
-        _mapController!.move(userLocation!, _mapController!.camera.zoom);
+      final loc = userLocation;
+      if (isNavigating && _mapController != null && loc != null) {
+        final controller = _mapController!;
+        controller.move(loc, controller.camera.zoom);
       }
 
       // Emit to Socket.IO for admin dashboard
@@ -251,7 +252,7 @@ class NavigationProvider extends ChangeNotifier {
 
       speak(
         'Navigation started. ${distanceKm.toStringAsFixed(1)} kilometres. '
-        'Estimated ${etaMinutes} minutes.',
+        'Estimated $etaMinutes minutes.',
         priority: true,
       );
     } catch (e) {

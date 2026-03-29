@@ -63,17 +63,17 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  assets:
-    - assets/images/
-    - assets/sounds/
+  # assets:
+  #   - assets/images/
+  #   - assets/sounds/
 
-  fonts:
-    - family: Orbitron
-      fonts:
-        - asset: assets/fonts/Orbitron-Regular.ttf
-        - asset: assets/fonts/Orbitron-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Orbitron-ExtraBold.ttf
-          weight: 800
-        - asset: assets/fonts/Orbitron-Black.ttf
-          weight: 900
+  # fonts:
+  #   - family: Orbitron
+  #     fonts:
+  #       - asset: assets/fonts/Orbitron-Regular.ttf
+  #       - asset: assets/fonts/Orbitron-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Orbitron-ExtraBold.ttf
+  #         weight: 800
+  #       - asset: assets/fonts/Orbitron-Black.ttf
+  #         weight: 900

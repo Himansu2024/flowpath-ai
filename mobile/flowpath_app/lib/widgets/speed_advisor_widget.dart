@@ -27,7 +27,7 @@ class SpeedAdvisorWidget extends StatelessWidget {
         color: const Color(0xF00E1520),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: hudBorderColor, width: 1.5),
-        boxShadow: [const BoxShadow(color: Colors.black54, blurRadius: 12)],
+        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12)],
       ),
       padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -46,7 +46,7 @@ class SpeedAdvisorWidget extends StatelessWidget {
             fontWeight: FontWeight.w900,
             fontFamily: 'Orbitron',
             height: 1,
-            shadows: [Shadow(color: recColor.withOpacity(0.5), blurRadius: 20)],
+            shadows: [Shadow(color: recColor.withAlpha((0.5 * 255).round()), blurRadius: 20)],
           ),
         ),
         const Text('KM/H', style: TextStyle(color: Colors.grey, fontSize: 9, letterSpacing: 2)),
@@ -69,9 +69,9 @@ class SpeedAdvisorWidget extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 5),
           decoration: BoxDecoration(
-            color: recColor.withOpacity(0.1),
+            color: recColor.withAlpha((0.1 * 255).round()),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: recColor.withOpacity(0.25)),
+            border: Border.all(color: recColor.withAlpha((0.25 * 255).round())),
           ),
           child: Text(
             _actionLabel(action),
@@ -97,7 +97,7 @@ class SpeedAdvisorWidget extends StatelessWidget {
     }
   }
 
-  Color _actionBorderColor(String a) => _actionColor(a).withOpacity(0.35);
+  Color _actionBorderColor(String a) => _actionColor(a).withAlpha((0.35 * 255).round());
 
   String _actionLabel(String a) {
     switch (a) {

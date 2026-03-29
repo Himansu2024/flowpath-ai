@@ -1,16 +1,16 @@
 // lib/services/socket_service.dart
 // Socket.IO client for real-time signal updates, congestion alerts, rerouting.
 
-import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:socket_io_client/socket_io_client.dart' as io;
 import 'package:flutter/foundation.dart';
 
 class SocketService {
-  IO.Socket? _socket;
+  io.Socket? _socket;
 
   // WebSocket URL — update to your deployed server in production
   static const String wsUrl = String.fromEnvironment(
     'WS_URL',
-    defaultValue: 'http://10.0.2.2:3000',
+    defaultValue: 'https://flowpath-backend.onrender.com',
   );
 
   bool get isConnected => _socket?.connected ?? false;
@@ -19,7 +19,7 @@ class SocketService {
   void connect(String userId) {
     if (_socket != null && isConnected) return;
 
-    _socket = IO.io(wsUrl, IO.OptionBuilder()
+    _socket = io.io(wsUrl, io.OptionBuilder()
       .setTransports(['websocket', 'polling'])
       .enableAutoConnect()
       .setTimeout(10000)

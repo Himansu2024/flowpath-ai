@@ -2,7 +2,6 @@
 // Authentication state management using ChangeNotifier + SharedPreferences.
 
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 
 class AuthProvider extends ChangeNotifier {

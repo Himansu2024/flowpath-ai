@@ -19,8 +19,8 @@ class SignalCountdownWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final phase = signal.currentPhase;
     final color = _phaseColor(phase);
-    final borderColor = color.withOpacity(0.45);
-    final glowColor  = color.withOpacity(0.15);
+    final borderColor = color.withAlpha((0.45 * 255).round());
+    final glowColor  = color.withAlpha((0.15 * 255).round());
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -83,7 +83,7 @@ class SignalCountdownWidget extends StatelessWidget {
                 fontWeight: FontWeight.w900,
                 fontFamily: 'Orbitron',
                 height: 1,
-                shadows: [Shadow(color: color.withOpacity(0.6), blurRadius: 16)],
+                shadows: [Shadow(color: color.withAlpha((0.6 * 255).round()), blurRadius: 16)],
               ),
             ),
             const Text('SEC', style: TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 2)),
@@ -125,9 +125,9 @@ class _TrafficLightWidget extends StatelessWidget {
         color: Colors.black,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: phase == 'red' ? const Color(0xFFFF1744).withOpacity(0.5)
-               : phase == 'yellow' ? const Color(0xFFFFD600).withOpacity(0.5)
-               : const Color(0xFF00E676).withOpacity(0.5),
+          color: phase == 'red' ? const Color(0x80FF1744)
+               : phase == 'yellow' ? const Color(0x80FFD600)
+               : const Color(0x8000E676),
           width: 1.5,
         ),
       ),
@@ -154,9 +154,9 @@ class _Bulb extends StatelessWidget {
       width: 18, height: 18,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: active ? color : color.withOpacity(0.12),
+        color: active ? color : color.withAlpha((0.12 * 255).round()),
         boxShadow: active ? [
-          BoxShadow(color: color.withOpacity(0.7), blurRadius: 10, spreadRadius: 1),
+          BoxShadow(color: color.withAlpha((0.7 * 255).round()), blurRadius: 10, spreadRadius: 1),
         ] : null,
       ),
     );
@@ -177,9 +177,9 @@ class _PhaseTag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withAlpha((0.12 * 255).round()),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha((0.3 * 255).round())),
       ),
       child: Text(label,
         style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1)),

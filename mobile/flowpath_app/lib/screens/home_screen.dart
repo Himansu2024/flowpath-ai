@@ -16,13 +16,11 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _searchCtrl = TextEditingController();
   int _tab = 0;
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final nav  = context.watch<NavigationProvider>();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
@@ -105,7 +103,7 @@ class _HomeTab extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
         // Search bar
-        _SearchBar(),
+        const _SearchBar(),
         const SizedBox(height: 24),
 
         // Quick stats cards
@@ -131,7 +129,7 @@ class _HomeTab extends StatelessWidget {
               begin: Alignment.topLeft, end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF00E676).withOpacity(0.25)),
+            border: Border.all(color: const Color(0x4000E676)),
           ),
           child: Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -184,6 +182,8 @@ class _HomeTab extends StatelessWidget {
 }
 
 class _SearchBar extends StatelessWidget {
+  const _SearchBar();
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -195,7 +195,7 @@ class _SearchBar extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: const Color(0xFF1E2A3A)),
         ),
-        child: Row(children: const [
+        child: const Row(children: [
           Icon(Icons.search, color: Colors.grey, size: 20),
           SizedBox(width: 10),
           Text('Where do you want to go?', style: TextStyle(color: Colors.grey, fontSize: 15)),
@@ -216,7 +216,7 @@ class _StatCard extends StatelessWidget {
     decoration: BoxDecoration(
       color: const Color(0xFF0E1520),
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: color.withOpacity(0.2)),
+      border: Border.all(color: color.withAlpha((0.2 * 255).round())),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(icon, style: const TextStyle(fontSize: 20)),

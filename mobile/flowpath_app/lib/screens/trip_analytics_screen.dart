@@ -70,7 +70,7 @@ class _TripAnalyticsScreenState extends State<TripAnalyticsScreen> {
               width: double.infinity, padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: const Color(0xFF0E1520), borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFF00E676).withOpacity(0.2)),
+                border: Border.all(color: const Color(0x3300E676)),
               ),
               child: Column(children: [
                 const Text('Average GreenWave Score', style: TextStyle(color: Colors.grey, fontSize: 13)),
@@ -114,7 +114,7 @@ class _AnalyticsCard extends StatelessWidget {
     padding: const EdgeInsets.all(14),
     decoration: BoxDecoration(
       color: const Color(0xFF0E1520), borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: color.withOpacity(0.2)),
+      border: Border.all(color: color.withAlpha((0.2 * 255).round())),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(icon, style: const TextStyle(fontSize: 18)),
