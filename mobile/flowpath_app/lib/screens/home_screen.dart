@@ -16,7 +16,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final MapController _mapController = MapController();
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Tell the provider to lock onto GPS as soon as the app opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<NavigationProvider>(context, listen: false).startTracking(_mapController);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

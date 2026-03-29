@@ -24,9 +24,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
   @override
   void initState() {
     super.initState();
-    final nav = context.read<NavigationProvider>();
-    nav.startTracking(_mapCtrl);
-    _locationTimer = Timer.periodic(const Duration(seconds:2), (_) => nav.updateLocation());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final nav = context.read<NavigationProvider>();
+      nav.startTracking(_mapCtrl);
+      _locationTimer = Timer.periodic(const Duration(seconds:2), (_) => nav.updateLocation());
+    });
   }
 
   @override
@@ -56,67 +58,74 @@ class _NavigationScreenState extends State<NavigationScreen> {
         FlutterMap(
           mapController: _mapCtrl,
           options: MapOptions(
-            initialCenter: nav.userLocation ?? const LatLng(12.9716, 77.5946),
-            initialZoom: 15,
+            initialCenter: const LatLng(12.9716, 77.5946),
+            initialZoom: 14.0,
             onTap: (_, latlng) {
               nav.setDestinationFromTap(latlng);
             },
           ),
           children: [
-            // Dark map tiles (OpenStreetMap via CartoDB)
+            // 1. The Base Map (Keep your existing dark mode TileLayer here)
             TileLayer(
-              urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-              subdomains: const ['a','b','c','d'],
-              userAgentPackageName: 'com.flowpath.app',
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
             ),
 
-            // Route polyline (glowing green)
-            if (nav.routePoints.isNotEmpty) ...[
-              PolylineLayer(polylines: [
-                Polyline(points: nav.routePoints, strokeWidth: 14, color: const Color(0x1F00E676)),
-                Polyline(points: nav.routePoints, strokeWidth: 5.5, color: const Color(0xFF00E676), strokeCap: StrokeCap.round),
-              ]),
-            ],
-
-            // Markers layer
-            MarkerLayer(markers: [
-              // Signal markers at every junction
-              ...nav.signals.where((s) => s.latitude != 0).map((s) => Marker(
-                point: LatLng(s.latitude, s.longitude),
-                width: 54, height: 82,
-                child: _SignalMarkerWidget(signal: s),
-              )),
-
-              // User live location
-              if (nav.userLocation != null) Marker(
-                point: nav.userLocation!,
-                width: 34, height: 34,
-                child: _UserMarker(heading: nav.heading),
-              ),
-
-              // Destination pin
-              if (nav.destination != null) Marker(
-                point: nav.destination!,
-                width: 32, height: 44,
-                child: const _DestPin(),
-              ),
-
-              // Parking markers
-              if (_showParking) ..._parkingSpots.take(8).map((p) => Marker(
-                point: LatLng(p['lat'] as double, p['lon'] as double),
-                width: 72, height: 28,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xE62479FF),
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: const [BoxShadow(color: Color(0xFF2979FF), blurRadius: 8)],
+            // 2. The Route Line (Draws the blue line from A to B)
+            PolylineLayer(
+              polylines: [
+                if (nav.routePoints.isNotEmpty)
+                  Polyline(
+                    points: nav.routePoints,
+                    color: Colors.blueAccent,
+                    strokeWidth: 6.0,
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal:8, vertical:4),
-                  child: Text('P ${(p['dist'] as num?)?.round()}m',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                ),
-              )),
-            ]),
+              ],
+            ),
+
+            // 3. Live Traffic Signals (Draws the timers)
+            MarkerLayer(
+              markers: nav.signals.map((signal) {
+                final isGreen = signal.currentPhase == 'green';
+                return Marker(
+                  point: LatLng(signal.latitude, signal.longitude),
+                  width: 50,
+                  height: 50,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: isGreen ? Colors.green : Colors.red),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${signal.secondsRemaining}',
+                        style: TextStyle(
+                          color: isGreen ? Colors.green : Colors.red,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            // 4. Your Vehicle (The Live GPS Dot)
+            if (nav.userLocation != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: nav.userLocation!,
+                    width: 40,
+                    height: 40,
+                    child: Transform.rotate(
+                      angle: nav.heading * (3.14159 / 180),
+                      child: const Icon(Icons.navigation, color: Colors.greenAccent, size: 40),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
 
