@@ -106,7 +106,11 @@ jobs:
     name: "Build: Docker Images → ECR"
     runs-on: ubuntu-latest
     needs: [test-backend, test-ai]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    # Temporarily disabled for Render. 
+    # To re-enable AWS later, change 'false' to: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false 
+    
     outputs:
       image-tag: ${{ steps.meta.outputs.tag }}
 
@@ -160,7 +164,10 @@ jobs:
     name: "Migrate: PostgreSQL Database"
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    # Temporarily disabled for Render. 
+    # To re-enable AWS later, change 'false' to: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false
 
     steps:
       - uses: actions/checkout@v4
@@ -192,7 +199,11 @@ jobs:
     name: "Deploy: AWS EC2"
     runs-on: ubuntu-latest
     needs: [build, migrate]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    # Temporarily disabled for Render. 
+    # To re-enable AWS later, change 'false' to: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false
+    
     environment: production
 
     steps:
