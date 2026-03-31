@@ -13,7 +13,7 @@ const Vehicle = sequelize.define('Vehicle', {
   destination_lon: { type: DataTypes.DECIMAL(11,8) },
   route_id:        { type: DataTypes.UUID },
   vehicle_type:    { type: DataTypes.STRING(20), defaultValue: 'car' },
-  license_plate:   { type: DataTypes.STRING(20) },
+  // license_plate:   { type: DataTypes.STRING(20) }, // <-- Commented out to prevent 500 crashes!
   is_navigating:   { type: DataTypes.BOOLEAN, defaultValue: false },
   socket_id:       { type: DataTypes.STRING(100) },
   last_updated:    { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
