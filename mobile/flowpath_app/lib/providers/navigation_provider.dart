@@ -50,6 +50,11 @@ class NavigationProvider extends ChangeNotifier {
   Timer?                      _locationTimer;
   String?                     _lastSpokenAdvice;
 
+  // ── Simulation Internals ─────────────────────────────────────
+  Timer? _simTimer;
+  int _simIndex = 0;
+  Timer? _demoSignalTimer; // <--- ADDED DEMO TIMER
+
   NavigationProvider({required this.apiService, required this.socketService}) {
     _initTts();
     _setupSocketListeners();
@@ -119,11 +124,13 @@ class NavigationProvider extends ChangeNotifier {
     _positionStream?.cancel();
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.bestForNavigation,
+        accuracy: LocationAccuracy.high, 
         distanceFilter: 3,
-        timeLimit: Duration(seconds: 10),
       ),
     ).listen((pos) {
+      // If the simulator is running, IGNORE real GPS!
+      if (_simTimer != null && _simTimer!.isActive) return;
+
       userLocation     = LatLng(pos.latitude, pos.longitude);
       heading          = pos.heading;
       currentSpeedKmh  = ((pos.speed * 3.6).clamp(0, 200)).toDouble();
@@ -145,6 +152,8 @@ class NavigationProvider extends ChangeNotifier {
       );
 
       notifyListeners();
+    }, onError: (error) {
+      debugPrint("GPS Stream Error: $error");
     });
   }
 
@@ -202,11 +211,14 @@ class NavigationProvider extends ChangeNotifier {
 
   // ── Route calculation ────────────────────────────────────────
   Future<void> calcAndStartRoute() async {
-    if (userLocation == null || destination == null) return;
+    if (destination == null) return;
+
+    final startLoc = userLocation ?? const LatLng(12.9716, 77.5946);
+
     try {
       final resp = await apiService.startNavigation(
-        startLat: userLocation!.latitude,
-        startLon: userLocation!.longitude,
+        startLat: startLoc.latitude,
+        startLon: startLoc.longitude,
         endLat:   destination!.latitude,
         endLon:   destination!.longitude,
       );
@@ -218,30 +230,31 @@ class NavigationProvider extends ChangeNotifier {
       timeSavedMinutes = (etaMinutes * 0.3).round();
       greenwaveScore   = double.tryParse(data['greenwaveScore']?.toString() ?? '0') ?? 0;
 
-      // Parse route geometry
       final coords = (data['route']?['geometry']?['coordinates'] as List? ?? []);
       routePoints  = coords.map((c) => LatLng(
         (c[1] as num).toDouble(),
         (c[0] as num).toDouble(),
       )).toList();
 
-      // Parse signals
       final rawSignals = data['signals'] as List? ?? [];
       signals = rawSignals.map((s) => SignalModel.fromJson(Map<String, dynamic>.from(s))).toList();
 
+      // 🔥 FIRE UP THE DEMO GENERATOR IF DATABASE IS EMPTY
+      if (signals.isEmpty && routePoints.isNotEmpty) {
+        _startDemoSignals();
+      } else {
+        _demoSignalTimer?.cancel();
+      }
+
       isNavigating = true;
 
-      // Wake lock: keep screen on while navigating
       await WakelockPlus.enable();
 
-      // Start location polling
       _locationTimer?.cancel();
       _locationTimer = Timer.periodic(const Duration(seconds: 2), (_) => updateLocation());
 
-      // Connect socket
       socketService.joinNavigation(routeId ?? '', userId: null);
 
-      // Fit map to route
       if (routePoints.isNotEmpty && _mapController != null) {
         final bounds = LatLngBounds.fromPoints(routePoints);
         _mapController!.fitCamera(CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(60)));
@@ -260,17 +273,71 @@ class NavigationProvider extends ChangeNotifier {
     }
   }
 
+  // ── DEMO SIGNAL GENERATOR (If database is empty) ──────────────
+  void _startDemoSignals() {
+    if (routePoints.isEmpty) return;
+    
+    // Pick 3 spots along your blue route line
+    final p1 = routePoints[(routePoints.length * 0.2).toInt()];
+    final p2 = routePoints[(routePoints.length * 0.5).toInt()];
+    final p3 = routePoints[(routePoints.length * 0.8).toInt()];
+
+    // Raw data so we can tick the timers down manually
+    List<Map<String, dynamic>> rawSignals = [
+      {'id': 'demo1', 'latitude': p1.latitude, 'longitude': p1.longitude, 'intersectionName': 'Silk Board Jn', 'currentPhase': 'red', 'secondsRemaining': 45, 'willCatchGreen': false, 'distanceFromUser': 0.5},
+      {'id': 'demo2', 'latitude': p2.latitude, 'longitude': p2.longitude, 'intersectionName': 'BTM Layout', 'currentPhase': 'green', 'secondsRemaining': 22, 'willCatchGreen': true, 'distanceFromUser': 1.2},
+      {'id': 'demo3', 'latitude': p3.latitude, 'longitude': p3.longitude, 'intersectionName': 'Udupi Garden', 'currentPhase': 'yellow', 'secondsRemaining': 5, 'willCatchGreen': false, 'distanceFromUser': 2.5},
+    ];
+
+    _demoSignalTimer?.cancel();
+    _demoSignalTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!isNavigating) {
+        timer.cancel();
+        return;
+      }
+
+      for (var s in rawSignals) {
+        int sec = s['secondsRemaining'] as int;
+        String phase = s['currentPhase'] as String;
+        
+        sec--; // Tick the clock down by 1 second!
+        
+        if (sec <= 0) { // Change lights when timer hits 0
+          if (phase == 'green') { phase = 'yellow'; sec = 5; }
+          else if (phase == 'yellow') { phase = 'red'; sec = 60; }
+          else { phase = 'green'; sec = 45; }
+        }
+        
+        s['secondsRemaining'] = sec;
+        s['currentPhase'] = phase;
+        s['willCatchGreen'] = (phase == 'green' && sec > 10);
+      }
+
+      // Convert back to models and update the UI
+      signals = rawSignals.map((s) => SignalModel.fromJson(s)).toList();
+      _updateNextSignal();
+      
+      // Fake the GreenWave optimization data so the Speed HUD reacts!
+      currentOptimization = {
+        'optimalSpeedKmh': signals.first.currentPhase == 'red' ? 26.0 : 42.0,
+        'action': signals.first.currentPhase == 'red' ? 'slow' : 'maintain',
+      };
+      greenwaveScore = 82.0;
+
+      notifyListeners();
+    });
+  }
+
   // ── Signal helpers ───────────────────────────────────────────
   void _updateNextSignal() {
     if (signals.isEmpty) return;
     nextSignal = signals.first;
 
-    // Track eco metrics
     if (nextSignal?.willCatchGreen == true) {
       stopsAvoided++;
       streakCount++;
-      fuelSavedL   += 0.045;  // ~45ml per stop avoided
-      co2SavedKg   += 0.105;  // ~105g per stop avoided
+      fuelSavedL   += 0.045;  
+      co2SavedKg   += 0.105;  
     } else {
       streakCount = 0;
     }
@@ -304,6 +371,38 @@ class NavigationProvider extends ChangeNotifier {
     Share.share(url, subject: 'FlowPath AI Navigation');
   }
 
+  // ── SIMULATION MODE (For testing at desk) ────────────────────
+  void startSimulation() {
+    if (routePoints.isEmpty) return;
+    _simIndex = 0;
+    _simTimer?.cancel();
+    
+    speak('Simulation started. Enjoy the ride.', priority: true);
+
+    _simTimer = Timer.periodic(const Duration(milliseconds: 1000), (timer) {
+      if (_simIndex >= routePoints.length - 1) {
+        timer.cancel();
+        speak('You have arrived at your destination.', priority: true);
+        return;
+      }
+
+      final current = routePoints[_simIndex];
+      final next = routePoints[_simIndex + 1];
+      
+      userLocation = current;
+      currentSpeedKmh = 42.0; 
+      
+      heading = const Distance().bearing(current, next);
+
+      if (_mapController != null) {
+        _mapController!.move(current, 17.5);
+      }
+      
+      notifyListeners();
+      _simIndex += 2; 
+    });
+  }
+
   // ── Stop navigation ──────────────────────────────────────────
   Future<void> stopNavigation() async {
     isNavigating = false;
@@ -311,7 +410,11 @@ class NavigationProvider extends ChangeNotifier {
     signals      = [];
     nextSignal   = null;
     routeId      = null;
+    
+    _simTimer?.cancel(); // Stop the ghost car!
     _locationTimer?.cancel();
+    _demoSignalTimer?.cancel(); // <--- STOP THE DEMO CLOCKS
+    
     await WakelockPlus.disable();
     await _tts.stop();
     notifyListeners();
@@ -321,6 +424,8 @@ class NavigationProvider extends ChangeNotifier {
   void stopTracking() {
     _positionStream?.cancel();
     _locationTimer?.cancel();
+    _simTimer?.cancel();
+    _demoSignalTimer?.cancel(); // <--- CLEANUP
   }
 
   @override

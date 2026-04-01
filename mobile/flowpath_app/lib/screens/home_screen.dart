@@ -2,6 +2,7 @@
 // Home screen with search, recent trips, eco stats, and quick-start navigation.
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/navigation_provider.dart';

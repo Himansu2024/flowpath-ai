@@ -182,7 +182,10 @@ class ApiService {
         'countrycodes': 'in',
         'addressdetails': 1,
       },
-      options: Options(headers: {'Accept-Language': 'en-IN,en'}),
+      options: Options(headers: {
+        'Accept-Language': 'en-IN,en',
+        'User-Agent': 'com.himansu.flowpath', // Added this badge!
+      }),
     );
     return List<Map<String, dynamic>>.from(resp.data);
   }
@@ -193,7 +196,10 @@ class ApiService {
       final resp = await dio2.get(
         'https://nominatim.openstreetmap.org/reverse',
         queryParameters: {'format': 'json', 'lat': lat, 'lon': lon},
-        options: Options(headers: {'Accept-Language': 'en-IN,en'}),
+        options: Options(headers: {
+          'Accept-Language': 'en-IN,en',
+          'User-Agent': 'com.himansu.flowpath', // Added this badge!
+        }),
       );
       return resp.data as Map<String, dynamic>;
     } catch (_) { return null; }
