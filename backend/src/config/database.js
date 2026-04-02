@@ -1,29 +1,29 @@
 // backend/src/config/database.js
-// Fixed: removed sequelize.sync() — use SQL migrations instead.
-// sync({alter:true}) breaks PostGIS generated columns and causes crash-loop.
 const { Sequelize } = require('sequelize');
 const logger = require('../utils/logger');
 
 // Standardize configuration options
 const dbConfig = {
   dialect:  'postgres',
-  logging:  (sql) => logger.debug(sql),
+  logging:  false, // Turned off SQL logging to improve performance and stop console spam
   pool: {
-    max:     parseInt(process.env.DB_POOL_MAX)  || 20,
-    min:     parseInt(process.env.DB_POOL_MIN)  || 2,
-    acquire: 60000, // Increased to 60s to prevent cloud cold-start timeouts
-    idle:    parseInt(process.env.DB_POOL_IDLE) || 10000,
+    max: 10,       // 🔥 FIXED: Reduced to 10 to stay safely under Supabase Free Tier limits
+    min: 2,
+    acquire: 60000,
+    idle: 10000,
   },
   dialectOptions: {
-    ssl: process.env.NODE_ENV === 'production'
-      ? { require: true, rejectUnauthorized: false }
-      : false,
+    // 🔥 FIXED: Forced SSL to true. Supabase pooler will hang and timeout without this!
+    ssl: { 
+      require: true, 
+      rejectUnauthorized: false 
+    },
     connectTimeout: 20000,
   },
   define: { underscored: true, timestamps: true },
 };
 
-// 🔥 THE FIX: Prefer DATABASE_URL (Render standard) but fallback to local variables
+// Prefer DATABASE_URL (Render standard) but fallback to local variables
 const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, dbConfig)
   : new Sequelize({
@@ -45,12 +45,9 @@ const connectDatabase = async () => {
     await sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
     logger.info('✅ PostGIS extension enabled');
 
-    // DO NOT call sequelize.sync() here — it breaks PostGIS generated columns.
-    // Use: docker exec flowpath-db psql ... -f migrations/00X_xxx.sql
-
   } catch (error) {
     logger.error('❌ Database connection failed: ' + error.message);
-    throw error; // Let server.js handle retry
+    throw error; 
   }
 };
 
