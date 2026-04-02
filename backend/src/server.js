@@ -4,6 +4,11 @@ require('dotenv').config();
 const http    = require('http');
 const { Server } = require('socket.io');
 const app     = require('./app');
+
+// 🔥 THE FIX: Tell Express to trust Render's reverse proxy / load balancer
+// This stops the express-rate-limit from blocking everyone!
+app.set('trust proxy', 1);
+
 const { connectDatabase } = require('./config/database');
 const { setupSocketHandlers, startBroadcastIntervals } = require('./services/socketService');
 const logger  = require('./utils/logger');

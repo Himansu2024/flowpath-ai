@@ -4,28 +4,36 @@
 const { Sequelize } = require('sequelize');
 const logger = require('../utils/logger');
 
-const sequelize = new Sequelize({
+// Standardize configuration options
+const dbConfig = {
   dialect:  'postgres',
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME     || 'flowpath_db',
-  username: process.env.DB_USER     || 'flowpath_user',
-  password: process.env.DB_PASSWORD,
   logging:  (sql) => logger.debug(sql),
   pool: {
     max:     parseInt(process.env.DB_POOL_MAX)  || 20,
     min:     parseInt(process.env.DB_POOL_MIN)  || 2,
-    acquire: 30000,
+    acquire: 60000, // Increased to 60s to prevent cloud cold-start timeouts
     idle:    parseInt(process.env.DB_POOL_IDLE) || 10000,
   },
   dialectOptions: {
     ssl: process.env.NODE_ENV === 'production'
       ? { require: true, rejectUnauthorized: false }
       : false,
-    connectTimeout: 10000,
+    connectTimeout: 20000,
   },
   define: { underscored: true, timestamps: true },
-});
+};
+
+// 🔥 THE FIX: Prefer DATABASE_URL (Render standard) but fallback to local variables
+const sequelize = process.env.DATABASE_URL
+  ? new Sequelize(process.env.DATABASE_URL, dbConfig)
+  : new Sequelize({
+      ...dbConfig,
+      host:     process.env.DB_HOST     || 'localhost',
+      port:     parseInt(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME     || 'flowpath_db',
+      username: process.env.DB_USER     || 'flowpath_user',
+      password: process.env.DB_PASSWORD,
+    });
 
 const connectDatabase = async () => {
   try {

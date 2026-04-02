@@ -11,6 +11,10 @@ const logger     = require('./utils/logger');
 
 const app = express();
 
+// 🔥 THE FIX: Tell Express to trust Render's reverse proxy / load balancer
+// This stops the express-rate-limit from throwing warnings and blocking legitimate users!
+app.set('trust proxy', 1);
+
 // ── Security middleware ──────────────────────────────────────
 app.use(helmet({
   contentSecurityPolicy: false, // Disable for API-only service

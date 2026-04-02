@@ -4,7 +4,6 @@
 
 const axios = require('axios');
 const { sequelize } = require('../config/database');
-const TrafficSignal = require('../models/TrafficSignal');
 const logger = require('../utils/logger');
 
 const OSRM_URL = 'https://router.project-osrm.org';
@@ -58,32 +57,39 @@ const calculateRoute = async (startLat, startLon, endLat, endLon) => {
  * Uses PostGIS ST_DWithin for geospatial query.
  *
  * @param {Object} routeGeometry - GeoJSON LineString of the route
- * @param {number} corridorMetres - Buffer distance around route (default 100m)
- * @returns {Promise<TrafficSignal[]>} Ordered list of signals along route
+ * @param {number} corridorMetres - Buffer distance around route (default 120m)
+ * @returns {Promise<Object[]>} Ordered list of signals along route
  */
-const getSignalsAlongRoute = async (routeGeometry, corridorMetres = 100) => {
+/**
+ * Find all traffic signals within a corridor around a route.
+ * Uses PostGIS ST_DWithin for geospatial query.
+ */
+const getSignalsAlongRoute = async (routeGeometry, corridorMetres = 500) => {
   try {
-    // PostGIS query: find signals within corridor of route line
-    // ST_DWithin checks if signal is within N metres of the route geometry
+    // 1. Force the OSRM route to be recognized as GPS coordinates using ST_SetSRID(... 4326)
+    // 2. Expand the search radius to 500 meters to guarantee we catch the signals
     const query = `
-      SELECT
-        ts.*,
+      SELECT 
+        id, 
+        intersection_name AS "intersectionName", 
+        latitude, 
+        longitude, 
+        current_phase AS phase, 
+        seconds_remaining AS "secondsRemaining",
         ST_Distance(
-          ST_GeomFromGeoJSON(:routeGeom)::geography,
-          ST_SetSRID(ST_MakePoint(ts.longitude, ts.latitude), 4326)::geography
-        ) AS distance_from_route,
-        ST_LineLocatePoint(
-          ST_GeomFromGeoJSON(:routeGeom),
-          ST_SetSRID(ST_MakePoint(ts.longitude, ts.latitude), 4326)
-        ) AS route_fraction
-      FROM traffic_signals ts
-      WHERE ts.is_active = true
-        AND ST_DWithin(
-          ST_GeomFromGeoJSON(:routeGeom)::geography,
-          ST_SetSRID(ST_MakePoint(ts.longitude, ts.latitude), 4326)::geography,
-          :corridor
-        )
-      ORDER BY route_fraction ASC;
+          ST_SetSRID(ST_GeomFromGeoJSON(:routeGeom), 4326)::geography, 
+          location::geography
+        ) AS "distanceMetres"
+      FROM signals
+      WHERE ST_DWithin(
+        ST_SetSRID(ST_GeomFromGeoJSON(:routeGeom), 4326)::geography, 
+        location::geography, 
+        :corridor
+      )
+      ORDER BY ST_LineLocatePoint(
+        ST_SetSRID(ST_GeomFromGeoJSON(:routeGeom), 4326), 
+        location::geometry
+      ) ASC;
     `;
 
     const [results] = await sequelize.query(query, {
@@ -105,28 +111,36 @@ const getSignalsAlongRoute = async (routeGeometry, corridorMetres = 100) => {
  * @param {number} lat
  * @param {number} lon
  * @param {number} radiusMetres - Default 1000m
- * @returns {Promise<TrafficSignal[]>}
+ * @returns {Promise<Object[]>}
  */
 const getNearbySignals = async (lat, lon, radiusMetres = 1000) => {
   try {
-    const [results] = await sequelize.query(`
-      SELECT *,
+    const query = `
+      SELECT 
+        id, 
+        intersection_name AS "intersectionName", 
+        latitude, 
+        longitude, 
+        current_phase AS phase, 
+        seconds_remaining AS "secondsRemaining",
         ST_Distance(
           ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
-          ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
-        ) AS distance_metres
-      FROM traffic_signals
-      WHERE is_active = true
-        AND ST_DWithin(
-          ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
-          ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography,
-          :radius
-        )
-      ORDER BY distance_metres ASC
+          location::geography
+        ) AS "distanceMetres"
+      FROM signals
+      WHERE ST_DWithin(
+        ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)::geography,
+        location::geography,
+        :radius
+      )
+      ORDER BY "distanceMetres" ASC
       LIMIT 20;
-    `, {
+    `;
+
+    const [results] = await sequelize.query(query, {
       replacements: { lat, lon, radius: radiusMetres },
     });
+    
     return results;
   } catch (error) {
     logger.error('getNearbySignals failed:', error.message);
