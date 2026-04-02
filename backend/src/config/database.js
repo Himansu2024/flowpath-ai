@@ -3,21 +3,23 @@ const { Sequelize } = require('sequelize');
 const logger = require('../utils/logger');
 
 // Standardize configuration options
+// Standardize configuration options
 const dbConfig = {
   dialect:  'postgres',
-  logging:  false, // Turned off SQL logging to improve performance and stop console spam
+  logging:  false,
   pool: {
-    max: 10,       // 🔥 FIXED: Reduced to 10 to stay safely under Supabase Free Tier limits
-    min: 2,
+    max: 10,
+    min: 0,          // 🔥 FIX 1: Set to 0 so we don't hold onto dead connections
     acquire: 60000,
     idle: 10000,
+    evict: 1000,     // 🔥 FIX 2: Check for and kill zombie connections every 1 second
   },
   dialectOptions: {
-    // 🔥 FIXED: Forced SSL to true. Supabase pooler will hang and timeout without this!
     ssl: { 
       require: true, 
       rejectUnauthorized: false 
     },
+    keepAlive: true, // 🔥 FIX 3: Send constant heartbeats so Supabase doesn't drop the connection
     connectTimeout: 20000,
   },
   define: { underscored: true, timestamps: true },
