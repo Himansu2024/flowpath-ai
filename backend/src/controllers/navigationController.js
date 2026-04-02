@@ -10,6 +10,9 @@ const { calculateRoute, getSignalsAlongRoute, getNearbyParking } = require('../s
 const { optimizeForSignal, optimizeRoute } = require('../services/greenwaveService');
 const logger = require('../utils/logger');
 
+// 🔥 ADDED: Import the direct database connection for raw SQL queries
+const { sequelize } = require('../config/database');
+
 /**
  * POST /api/v1/navigation/start
  * Begin a navigation session: calculate route, fetch signals,
@@ -245,23 +248,41 @@ const getTripHistory = async (req, res, next) => {
         total: count,
         pages: Math.ceil(count / limit),
         currentPage: page,
-      },
+        },
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Helper: get signals on route near current position
+// 🔥 FIXED: Helper: get signals on route near current position using Raw SQL
 const getNearbySignalsOnRoute = async (lat, lon, routeId) => {
   if (!routeId) return [];
   const route = await Route.findByPk(routeId);
-  if (!route || !route.signal_sequence?.length) return [];
+  if (!route || !route.signal_sequence || route.signal_sequence.length === 0) return [];
 
-  const signals = await TrafficSignal.findAll({
-    where: { id: route.signal_sequence, is_active: true },
-  });
-  return signals;
+  try {
+    // Use raw SQL to completely bypass the UUID restriction 
+    // and correctly map to the 'signals' table we seeded!
+    const [signals] = await sequelize.query(`
+      SELECT 
+        id, 
+        intersection_name AS "intersectionName", 
+        latitude, 
+        longitude, 
+        current_phase AS phase, 
+        seconds_remaining AS "secondsRemaining"
+      FROM signals
+      WHERE id IN (:ids)
+    `, {
+      replacements: { ids: route.signal_sequence }
+    });
+
+    return signals;
+  } catch (error) {
+    logger.error('❌ Error fetching nearby signals:', error.message);
+    return [];
+  }
 };
 
 const computeGreenwaveScore = (optimizations) => {
