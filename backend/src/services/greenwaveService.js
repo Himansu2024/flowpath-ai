@@ -8,7 +8,8 @@
 
 const axios = require('axios');
 const logger = require('../utils/logger');
-const TrafficSignal = require('../models/TrafficSignal');
+// 🔥 ADDED: Import raw database connection
+const { sequelize } = require('../config/database');
 const { calculateDistance, metersToKm } = require('../utils/geoUtils');
 
 // Comfort speed boundaries (km/h)
@@ -20,20 +21,6 @@ const DEFAULT_SPEED_KMH = 40;
  * Main GreenWave optimization function.
  * Given vehicle's current position, speed, and the next signal,
  * returns the optimal speed recommendation.
- *
- * Algorithm:
- *   arrival_time = current_time + (distance / speed)
- *   signal_phase = arrival_time % signal_cycle
- *   If arrival is during GREEN → maintain speed
- *   If arrival is during RED  → adjust speed to hit next GREEN start
- *
- * @param {Object} params
- * @param {number} params.vehicleLat
- * @param {number} params.vehicleLon
- * @param {number} params.vehicleSpeedKmh
- * @param {string} params.signalId - UUID of next signal
- * @param {Date}   params.currentTime
- * @returns {Promise<Object>} Optimization result
  */
 const optimizeForSignal = async ({
   vehicleLat,
@@ -42,9 +29,27 @@ const optimizeForSignal = async ({
   signalId,
   currentTime = new Date(),
 }) => {
-  // Fetch signal data from database
-  const signal = await TrafficSignal.findByPk(signalId);
-  if (!signal) throw new Error(`Signal ${signalId} not found`);
+  // 🔥 FIXED: Use raw SQL to bypass the UUID restriction
+  const [signals] = await sequelize.query(`
+    SELECT 
+      id, 
+      intersection_name, 
+      latitude, 
+      longitude, 
+      current_phase AS phase, 
+      seconds_remaining AS remaining,
+      green_duration,
+      yellow_duration,
+      red_duration,
+      cycle_time
+    FROM signals
+    WHERE id = :id
+  `, {
+    replacements: { id: signalId }
+  });
+
+  if (!signals || signals.length === 0) throw new Error(`Signal ${signalId} not found`);
+  const signal = signals[0];
 
   // Distance from vehicle to signal (metres)
   const distanceMetres = calculateDistance(
@@ -52,8 +57,18 @@ const optimizeForSignal = async ({
     parseFloat(signal.latitude), parseFloat(signal.longitude)
   );
 
-  // Current phase of the signal
-  const { phase, remaining, nextGreenIn } = signal.calculateCurrentState(currentTime);
+  // 🔥 FIXED: Inline calculation since we bypassed the Sequelize model method
+  const phase = signal.phase || 'red';
+  const remaining = parseInt(signal.remaining) || 45;
+  let nextGreenIn = 0;
+  
+  if (phase === 'red') {
+    nextGreenIn = remaining;
+  } else if (phase === 'yellow') {
+    nextGreenIn = remaining + (parseInt(signal.red_duration) || 60);
+  } else {
+    nextGreenIn = 0; // It's currently green
+  }
 
   // Travel time at current speed (seconds)
   const currentSpeedMs = (vehicleSpeedKmh * 1000) / 3600;
@@ -62,8 +77,10 @@ const optimizeForSignal = async ({
   // Determine what phase the vehicle will arrive during at current speed
   const arrivalInPhase = computeArrivalPhase(
     travelTimeSeconds, remaining, phase,
-    signal.green_duration, signal.yellow_duration,
-    signal.red_duration, signal.cycle_time
+    parseInt(signal.green_duration) || 45, 
+    parseInt(signal.yellow_duration) || 5,
+    parseInt(signal.red_duration) || 60, 
+    parseInt(signal.cycle_time) || 110
   );
 
   let result = {
@@ -118,9 +135,6 @@ const optimizeForSignal = async ({
 /**
  * Multi-signal greenwave optimization for full route.
  * Coordinates timing across all signals on route.
- * @param {Object[]} signals - Ordered list of signals on route
- * @param {Object} vehicleState - Current vehicle position and speed
- * @returns {Promise<Object[]>} Per-signal optimization results
  */
 const optimizeRoute = async (signals, vehicleState) => {
   const { lat, lon, speedKmh } = vehicleState;
@@ -129,13 +143,14 @@ const optimizeRoute = async (signals, vehicleState) => {
 
   let cumulativeDistanceMetres = 0;
   let timeOffsetSeconds = 0;
+  let currentSpeedKmh = speedKmh; // Track speed modifications
 
   for (const signal of signals) {
     const distToSignal = calculateDistance(lat, lon, signal.latitude, signal.longitude);
     cumulativeDistanceMetres += distToSignal;
 
     // Project time when vehicle will reach this signal
-    const speedMs = (speedKmh * 1000) / 3600;
+    const speedMs = (currentSpeedKmh * 1000) / 3600;
     timeOffsetSeconds = cumulativeDistanceMetres / speedMs;
     const projectedArrivalTime = new Date(currentTime.getTime() + timeOffsetSeconds * 1000);
 
@@ -143,13 +158,13 @@ const optimizeRoute = async (signals, vehicleState) => {
       const optimization = await optimizeForSignal({
         vehicleLat: lat,
         vehicleLon: lon,
-        vehicleSpeedKmh: speedKmh,
+        vehicleSpeedKmh: currentSpeedKmh,
         signalId: signal.id,
         currentTime: projectedArrivalTime,
       });
 
       // Adjust future speed based on this signal's recommendation
-      if (optimization.optimalSpeedKmh) speedKmh = optimization.optimalSpeedKmh;
+      if (optimization.optimalSpeedKmh) currentSpeedKmh = optimization.optimalSpeedKmh;
 
       results.push({
         ...optimization,
@@ -167,15 +182,12 @@ const optimizeRoute = async (signals, vehicleState) => {
 
 /**
  * Calculate optimal speed for vehicle to reach signal during green phase.
- * @param {number} distanceMetres - Distance to signal
- * @param {number} nextGreenIn - Seconds until next green phase
- * @param {Object} signal - Signal model instance
- * @returns {{ optimalSpeed: number, delay: number }}
  */
 const calculateOptimalSpeed = (distanceMetres, nextGreenIn, signal) => {
   if (nextGreenIn <= 0) {
     // Signal is currently green — maintain or accelerate
-    const arrivalTime = signal.green_duration / 2;  // Aim for middle of green
+    const greenDuration = parseInt(signal.green_duration) || 45;
+    const arrivalTime = greenDuration / 2;  // Aim for middle of green
     const optimalSpeed = (distanceMetres / arrivalTime) * 3.6;
     return { optimalSpeed, delay: 0 };
   }
@@ -185,7 +197,8 @@ const calculateOptimalSpeed = (distanceMetres, nextGreenIn, signal) => {
   const speedToHitGreenKmh = speedToHitGreenMs * 3.6;
 
   // Also try the NEXT green cycle
-  const nextCycleGreenIn = nextGreenIn + signal.cycle_time;
+  const cycleTime = parseInt(signal.cycle_time) || 110;
+  const nextCycleGreenIn = nextGreenIn + cycleTime;
   const speedNextCycleMs = distanceMetres / nextCycleGreenIn;
   const speedNextCycleKmh = speedNextCycleMs * 3.6;
 
@@ -194,7 +207,7 @@ const calculateOptimalSpeed = (distanceMetres, nextGreenIn, signal) => {
   const validCandidate = candidates.find(s => s >= MIN_SPEED_KMH && s <= MAX_SPEED_KMH);
 
   if (validCandidate) {
-    const delay = validCandidate === speedToHitGreenKmh ? 0 : signal.cycle_time;
+    const delay = validCandidate === speedToHitGreenKmh ? 0 : cycleTime;
     return { optimalSpeed: validCandidate, delay };
   }
 
