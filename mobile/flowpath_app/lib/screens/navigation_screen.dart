@@ -2,10 +2,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../providers/navigation_provider.dart';
 import '../models/signal_model.dart';
+import '../widgets/glass_container.dart';
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({super.key});
@@ -706,41 +708,4 @@ class _UserMarker extends StatelessWidget {
       Transform.rotate(angle: heading * 3.14159 / 180, child: const Icon(Icons.navigation, color: Colors.white, size: 14)),
     ],
   );
-}
-
-class GlassContainer extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry padding;
-  final double borderRadius;
-  final Color? borderColor;
-
-  const GlassContainer({
-    super.key,
-    required this.child,
-    this.padding = const EdgeInsets.all(12),
-    this.borderRadius = 18,
-    this.borderColor,
-  });
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: const Color(0xCC0E1520),
-      borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: borderColor ?? const Color(0x1AFFFFFF)),
-      boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 12)],
-    ),
-    child: child,
-  );
-}
-
-class GoogleFonts {
-  static TextStyle orbitron({
-    Color? color, double? fontSize, FontWeight? fontWeight, double? letterSpacing, List<Shadow>? shadows,
-  }) => TextStyle(color: color, fontSize: fontSize, fontWeight: fontWeight, letterSpacing: letterSpacing, shadows: shadows);
-
-  static TextStyle rajdhani({
-    Color? color, double? fontSize, FontWeight? fontWeight,
-  }) => TextStyle(color: color, fontSize: fontSize, fontWeight: fontWeight);
 }

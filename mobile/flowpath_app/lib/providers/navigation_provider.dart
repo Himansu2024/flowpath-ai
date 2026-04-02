@@ -53,7 +53,6 @@ class NavigationProvider extends ChangeNotifier {
   // ── Simulation Internals ─────────────────────────────────────
   Timer? _simTimer;
   int _simIndex = 0;
-  Timer? _demoSignalTimer; // <--- ADDED DEMO TIMER
 
   NavigationProvider({required this.apiService, required this.socketService}) {
     _initTts();
@@ -236,15 +235,9 @@ class NavigationProvider extends ChangeNotifier {
         (c[0] as num).toDouble(),
       )).toList();
 
+      // Fetch the LIVE signals computed by PostGIS on your backend
       final rawSignals = data['signals'] as List? ?? [];
       signals = rawSignals.map((s) => SignalModel.fromJson(Map<String, dynamic>.from(s))).toList();
-
-      // 🔥 FIRE UP THE DEMO GENERATOR IF DATABASE IS EMPTY
-      if (signals.isEmpty && routePoints.isNotEmpty) {
-        _startDemoSignals();
-      } else {
-        _demoSignalTimer?.cancel();
-      }
 
       isNavigating = true;
 
@@ -271,61 +264,6 @@ class NavigationProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Route calculation error: $e');
     }
-  }
-
-  // ── DEMO SIGNAL GENERATOR (If database is empty) ──────────────
-  void _startDemoSignals() {
-    if (routePoints.isEmpty) return;
-    
-    // Pick 3 spots along your blue route line
-    final p1 = routePoints[(routePoints.length * 0.2).toInt()];
-    final p2 = routePoints[(routePoints.length * 0.5).toInt()];
-    final p3 = routePoints[(routePoints.length * 0.8).toInt()];
-
-    // Raw data so we can tick the timers down manually
-    List<Map<String, dynamic>> rawSignals = [
-      {'id': 'demo1', 'latitude': p1.latitude, 'longitude': p1.longitude, 'intersectionName': 'Silk Board Jn', 'currentPhase': 'red', 'secondsRemaining': 45, 'willCatchGreen': false, 'distanceFromUser': 0.5},
-      {'id': 'demo2', 'latitude': p2.latitude, 'longitude': p2.longitude, 'intersectionName': 'BTM Layout', 'currentPhase': 'green', 'secondsRemaining': 22, 'willCatchGreen': true, 'distanceFromUser': 1.2},
-      {'id': 'demo3', 'latitude': p3.latitude, 'longitude': p3.longitude, 'intersectionName': 'Udupi Garden', 'currentPhase': 'yellow', 'secondsRemaining': 5, 'willCatchGreen': false, 'distanceFromUser': 2.5},
-    ];
-
-    _demoSignalTimer?.cancel();
-    _demoSignalTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!isNavigating) {
-        timer.cancel();
-        return;
-      }
-
-      for (var s in rawSignals) {
-        int sec = s['secondsRemaining'] as int;
-        String phase = s['currentPhase'] as String;
-        
-        sec--; // Tick the clock down by 1 second!
-        
-        if (sec <= 0) { // Change lights when timer hits 0
-          if (phase == 'green') { phase = 'yellow'; sec = 5; }
-          else if (phase == 'yellow') { phase = 'red'; sec = 60; }
-          else { phase = 'green'; sec = 45; }
-        }
-        
-        s['secondsRemaining'] = sec;
-        s['currentPhase'] = phase;
-        s['willCatchGreen'] = (phase == 'green' && sec > 10);
-      }
-
-      // Convert back to models and update the UI
-      signals = rawSignals.map((s) => SignalModel.fromJson(s)).toList();
-      _updateNextSignal();
-      
-      // Fake the GreenWave optimization data so the Speed HUD reacts!
-      currentOptimization = {
-        'optimalSpeedKmh': signals.first.currentPhase == 'red' ? 26.0 : 42.0,
-        'action': signals.first.currentPhase == 'red' ? 'slow' : 'maintain',
-      };
-      greenwaveScore = 82.0;
-
-      notifyListeners();
-    });
   }
 
   // ── Signal helpers ───────────────────────────────────────────
@@ -413,7 +351,6 @@ class NavigationProvider extends ChangeNotifier {
     
     _simTimer?.cancel(); // Stop the ghost car!
     _locationTimer?.cancel();
-    _demoSignalTimer?.cancel(); // <--- STOP THE DEMO CLOCKS
     
     await WakelockPlus.disable();
     await _tts.stop();
@@ -425,7 +362,6 @@ class NavigationProvider extends ChangeNotifier {
     _positionStream?.cancel();
     _locationTimer?.cancel();
     _simTimer?.cancel();
-    _demoSignalTimer?.cancel(); // <--- CLEANUP
   }
 
   @override
