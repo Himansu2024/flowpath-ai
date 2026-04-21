@@ -6,8 +6,8 @@ class SignalModel {
   final String intersectionName;
   final double latitude;
   final double longitude;
-  final String currentPhase;      // 'red' | 'yellow' | 'green'
-  final int secondsRemaining;
+  String currentPhase;        // Unlocked!
+  int secondsRemaining;       // Unlocked!
   final int nextGreenIn;
   final int greenDuration;
   final int yellowDuration;
@@ -24,7 +24,8 @@ class SignalModel {
   final String? adviceText;
   final bool willCatchGreen;
 
-  const SignalModel({
+  // Removed "const" here so the unlocked variables work perfectly
+  SignalModel({
     required this.id,
     required this.intersectionName,
     required this.latitude,

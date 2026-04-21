@@ -18,6 +18,7 @@ class NavigationScreen extends StatefulWidget {
 class _NavigationScreenState extends State<NavigationScreen> {
   final MapController _mapCtrl = MapController();
   Timer? _locationTimer;
+  Timer? _uiCountdownTimer; // 🔥 ADDED: The dedicated 1-second UI timer
 
   @override
   void initState() {
@@ -25,13 +26,52 @@ class _NavigationScreenState extends State<NavigationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final nav = context.read<NavigationProvider>();
       nav.startTracking(_mapCtrl);
-      _locationTimer = Timer.periodic(const Duration(seconds: 2), (_) => nav.updateLocation());
+      
+      // 📡 1. NETWORK TIMER: Relaxed to 4 seconds to prevent interrupting the UI
+      _locationTimer = Timer.periodic(const Duration(seconds: 4), (_) => nav.updateLocation());
+      
+      // ⏱️ 2. UI TIMER: Ticks exactly every 1 second for a butter-smooth countdown
+      _uiCountdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        bool needsRebuild = false;
+        
+        // Tick down map signals
+        for (var s in nav.signals) {
+          if (s.secondsRemaining > 0) {
+            s.secondsRemaining--;
+            needsRebuild = true;
+          } else {
+            if (s.currentPhase == 'green') { s.currentPhase = 'yellow'; s.secondsRemaining = 5; }
+            else if (s.currentPhase == 'yellow') { s.currentPhase = 'red'; s.secondsRemaining = 60; }
+            else { s.currentPhase = 'green'; s.secondsRemaining = 45; }
+            needsRebuild = true;
+          }
+        }
+
+        // Tick down the top HUD signal
+        if (nav.nextSignal != null) {
+          if (nav.nextSignal!.secondsRemaining > 0) {
+            nav.nextSignal!.secondsRemaining--;
+            needsRebuild = true;
+          } else {
+            if (nav.nextSignal!.currentPhase == 'green') { nav.nextSignal!.currentPhase = 'yellow'; nav.nextSignal!.secondsRemaining = 5; }
+            else if (nav.nextSignal!.currentPhase == 'yellow') { nav.nextSignal!.currentPhase = 'red'; nav.nextSignal!.secondsRemaining = 60; }
+            else { nav.nextSignal!.currentPhase = 'green'; nav.nextSignal!.secondsRemaining = 45; }
+            needsRebuild = true;
+          }
+        }
+
+        if (needsRebuild) {
+          setState(() {}); // Repaint the screen with the new numbers
+        }
+      });
     });
   }
 
   @override
   void dispose() {
     _locationTimer?.cancel();
+    _uiCountdownTimer?.cancel(); // 🔥 Always cancel to prevent memory leaks
     context.read<NavigationProvider>().stopTracking();
     super.dispose();
   }

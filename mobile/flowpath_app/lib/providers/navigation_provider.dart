@@ -62,7 +62,7 @@ class NavigationProvider extends ChangeNotifier {
   // ── TTS setup ────────────────────────────────────────────────
   Future<void> _initTts() async {
     await _tts.setLanguage('en-IN');
-    await _tts.setSpeechRate(0.95);
+    await _tts.setSpeechRate(0.50);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
   }
@@ -244,7 +244,7 @@ class NavigationProvider extends ChangeNotifier {
       await WakelockPlus.enable();
 
       _locationTimer?.cancel();
-      _locationTimer = Timer.periodic(const Duration(seconds: 2), (_) => updateLocation());
+      _locationTimer = Timer.periodic(const Duration(seconds: 1), (_) => updateLocation());
 
       socketService.joinNavigation(routeId ?? '', userId: null);
 
